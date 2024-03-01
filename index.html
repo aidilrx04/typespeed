@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TypeSpeed Test Game</title>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+      integrity="sha512-bnIvzh6FU75ZKxp0GXLH9bewza/OIw6dLVh9ICg0gogclmYGguQJWl8U30WpbsGTqbIiAwxTsbe76DErLq5EDQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="container">
+      <h1 id="title">Typing Speed Test Game</h1>
+      <div id="words-container"></div>
+      <div id="bottom" class="">
+        <div id="beforestart">
+          <input type="text" id="name" placeholder="Your name" />
+          <button id="btnStart">Start</button>
+        </div>
+        <div id="afterstart">
+          <input type="text" id="input" placeholder="Type here..." />
+
+          <div id="indicators">
+            <span id="time">Time left: {xx}</span>
+            <span id="wpm">WPM: 0</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="leaderboard">
+        <hr />
+        <h2>LeaderBoard</h2>
+        <ol id="lb"></ol>
+      </div>
+    </div>
+
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        background-color: #e2e8f0;
+        font-family: "Roboto", sans-serif;
+      }
+      #container {
+        width: 700px;
+        max-width: 100%;
+        min-height: 100%;
+        background-color: #f8fafc;
+        margin: 0 auto;
+        padding: 0 24px;
+        padding-top: 64px;
+      }
+
+      #title {
+        margin-bottom: 64px;
+        text-align: center;
+        font-size: 24px;
+      }
+
+      #words-container {
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 20px;
+        background-color: #f1f5f9;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        margin-bottom: 24px;
+      }
+
+      #name {
+        display: block;
+        padding: 12px 16px;
+        width: 300px;
+        max-width: 100%;
+        margin: 12px auto;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        background-color: white;
+      }
+
+      #btnStart {
+        display: block;
+        margin: 0 auto;
+        margin-bottom: 24px;
+        padding: 8px 24px;
+        font-size: 16px;
+        background-color: #2563eb;
+        color: #f8fafc;
+        border-radius: 4px;
+        border: 1px solid #2563eb;
+      }
+
+      #name,
+      #input {
+        font-size: 16px;
+      }
+
+      #input {
+        display: block;
+        width: 100%;
+        padding: 12px 20px;
+        border: 1px solid #f1f5f9;
+        background-color: white;
+        border-radius: 4px;
+        margin: 12px auto;
+      }
+
+      #indicators {
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        padding-bottom: 24px;
+        gap: 16px;
+      }
+
+      #bottom.start #beforestart {
+        display: none;
+      }
+      #beforestart {
+        padding-bottom: 24px;
+      }
+
+      #afterstart {
+        display: none;
+      }
+      #bottom.start #afterstart {
+        display: block;
+      }
+
+      #leadeboard {
+        padding: 20px;
+      }
+
+      #leaderboard hr {
+        margin-bottom: 24px;
+      }
+
+      #leaderboard h2 {
+        font-size: 20px;
+        margin-bottom: 24px;
+      }
+
+      #leaderboard ol {
+        padding-left: 16px;
+      }
+      #leaderboard li {
+        padding: 0px 0 12px 0;
+      }
+    </style>
+
+    <script>
+      const texts = [
+        "These are the texts to be typed Lorem ipsum dolor sit amet consectetur adipisicing elit. Fugit rerum, aliquam voluptas ipsum alias accusamus recusandae illo est, commodi hic repellat animi in. Recusandae eum non eos cum inventore odit?",
+      ];
+    </script>
+
+    <script>
+      $(function () {
+        const wordsContainer = $("#words-container");
+        const btnStart = $("#btnStart");
+        let currentWordIndex = 0;
+        const text = texts[0].split(" ");
+        const input = $("#input");
+        let entries = 0;
+        let startTime;
+        let finishTime;
+        let hasFinish = false;
+        let hasStart = false;
+        const timeIndicator = $("#time");
+        const wpmIndicator = $("#wpm");
+        const userData = loadUserData();
+        const name = $("#name");
+        const leaderboard = $("#lb");
+
+        let duration = 0.5;
+
+        initTime(duration);
+
+        let time;
+
+        text.forEach((word) => {
+          wordsContainer.append(
+            $(
+              `<div>${word
+                .split("")
+                .map((c) => `<span>${c}</span>`)
+                .join("")}</div>`
+            )
+          );
+        });
+
+        btnStart.on("click", () => {
+          hasStart = true;
+          startTime = new Date();
+          $("#bottom").addClass("start");
+
+          let j = setInterval(() => {
+            if (!hasFinish) return;
+
+            // store user data
+            const user = {
+              name: name.val(),
+              wpm: calculateWPM(
+                entries,
+                (finishTime.getTime() - startTime.getTime()) / (1000 * 60)
+              ),
+            };
+
+            leaderboard.html(() => {
+              return [...userData, user]
+                .sort((a, b) => b.wpm - a.wpm)
+                .map((a) => $(`<li>${a.name} : ${a.wpm} WPM</li>`));
+            });
+
+            leaderboard.show();
+
+            localStorage.setItem("users", JSON.stringify([...userData, user]));
+            clearInterval(j);
+          }, 250);
+
+          time = new Date(startTime.getTime() + 1000 * 60 * duration);
+
+          let i = setInterval(() => {
+            if (hasFinish) {
+              clearInterval(i);
+            }
+
+            const remaining = time.getTime() - new Date().getTime();
+            const min = Math.round(remaining / (1000 * 60));
+            const sec = Math.round(remaining / 1000);
+
+            const wpm = calculateWPM(entries, duration - min);
+
+            wpmIndicator.html(`WPM : ${wpm}`);
+
+            timeIndicator.html(
+              `Time left: ${min > 0 ? `${min} min ` : ""}${sec} secs`
+            );
+
+            if (remaining < 0) {
+              hasFinish = true;
+              finishTime = new Date(startTime.getTime() + duration * 1000 * 60);
+              $("#bottom").removeClass("start");
+              clearInterval(i);
+            }
+          }, 1000);
+
+          input.focus();
+        });
+
+        let resetVal = false;
+
+        input.on("keydown", (e) => {
+          if (!hasStart || hasFinish) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+
+          const currentWord = text[currentWordIndex];
+          const value = e.target.value;
+
+          if (e.key === " " || e.key === "Enter") {
+            console.log(
+              value.trim(),
+              currentWord,
+              value.trim() === currentWord
+            );
+            if (value.trim() === currentWord) {
+              input.val("");
+              resetVal = true;
+              currentWordIndex++;
+              entries += currentWord.length + 1;
+
+              if (currentWordIndex === text.length) {
+                finishTime = new Date();
+                hasFinish = true;
+                $("#bottom").removeClass("start");
+                console.log(
+                  calculateWPM(
+                    entries,
+                    (finishTime.getTime() - startTime.getTime()) / (1000 * 60)
+                  )
+                );
+              }
+              return;
+            }
+          }
+        });
+
+        input.on("keyup", (e) => {
+          if (!hasStart || hasFinish) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+
+          if (resetVal) {
+            input.val("");
+            resetVal = false;
+          }
+
+          const currentWord = text[currentWordIndex];
+          const value = e.target.value;
+          const wordContainer = wordsContainer.children().eq(currentWordIndex);
+
+          wordContainer.children().each((i, c) => {
+            $(c).css("text-decoration", "none").css("color", "inherit");
+          });
+
+          let currEntries = 0;
+
+          try {
+            currentWord.split("").forEach((c, i) => {
+              if (i < value.length) {
+                if (c === value[i]) {
+                  currEntries++;
+                  wordContainer
+                    .children()
+                    .eq(i)
+                    .css("text-decoration", "underline");
+                } else {
+                  wordContainer.children().eq(i).css({
+                    color: "red",
+                    "text-decoration": "1px underline red",
+                  });
+                  throw "QUIT";
+                }
+              }
+            });
+          } catch (e) {
+            // do nothing
+          }
+
+          const now = new Date().getTime() - startTime.getTime();
+          const min = now / (1000 * 60);
+          const currWPM = (entries + currEntries) / 5 / min;
+        });
+
+        function calculateWPM(characterEntries, timeInMinute) {
+          const wpm = characterEntries / 5 / timeInMinute;
+          return wpm;
+        }
+
+        function loadUserData() {
+          try {
+            const savedStr = localStorage.getItem("users");
+            const parsed = JSON.parse(savedStr);
+            console.log(parsed);
+
+            if (!parsed) return [];
+
+            return parsed;
+          } catch (e) {
+            return [];
+          }
+        }
+
+        function initTime(duration) {}
+      });
+    </script>
+  </body>
+</html>
