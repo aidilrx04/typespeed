@@ -17,6 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="container">
@@ -40,131 +41,20 @@
       <div id="leaderboard">
         <hr />
         <h2>LeaderBoard</h2>
-        <ol id="lb"></ol>
+        <table border="1">
+          <thead>
+            <th>No</th>
+            <th>Name</th>
+            <th>WPM</th>
+          </thead>
+          <tbody id="lb">
+            <tr>
+              <td colspan="3">No one on the rank yet!</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
-
-    <style>
-      * {
-        padding: 0;
-        margin: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        background-color: #e2e8f0;
-        font-family: "Roboto", sans-serif;
-      }
-      #container {
-        width: 700px;
-        max-width: 100%;
-        min-height: 100%;
-        background-color: #f8fafc;
-        margin: 0 auto;
-        padding: 0 24px;
-        padding-top: 64px;
-      }
-
-      #title {
-        margin-bottom: 64px;
-        text-align: center;
-        font-size: 24px;
-      }
-
-      #words-container {
-        display: flex;
-        align-items: center;
-        justify-content: start;
-        flex-wrap: wrap;
-        gap: 4px;
-        padding: 20px;
-        background-color: #f1f5f9;
-        border-radius: 4px;
-        border: 1px solid #cbd5e1;
-        color: #334155;
-        margin-bottom: 24px;
-      }
-
-      #name {
-        display: block;
-        padding: 12px 16px;
-        width: 300px;
-        max-width: 100%;
-        margin: 12px auto;
-        border-radius: 4px;
-        border: 1px solid #cbd5e1;
-        background-color: white;
-      }
-
-      #btnStart {
-        display: block;
-        margin: 0 auto;
-        margin-bottom: 24px;
-        padding: 8px 24px;
-        font-size: 16px;
-        background-color: #2563eb;
-        color: #f8fafc;
-        border-radius: 4px;
-        border: 1px solid #2563eb;
-      }
-
-      #name,
-      #input {
-        font-size: 16px;
-      }
-
-      #input {
-        display: block;
-        width: 100%;
-        padding: 12px 20px;
-        border: 1px solid #f1f5f9;
-        background-color: white;
-        border-radius: 4px;
-        margin: 12px auto;
-      }
-
-      #indicators {
-        display: flex;
-        align-items: center;
-        justify-content: start;
-        padding-bottom: 24px;
-        gap: 16px;
-      }
-
-      #bottom.start #beforestart {
-        display: none;
-      }
-      #beforestart {
-        padding-bottom: 24px;
-      }
-
-      #afterstart {
-        display: none;
-      }
-      #bottom.start #afterstart {
-        display: block;
-      }
-
-      #leadeboard {
-        padding: 20px;
-      }
-
-      #leaderboard hr {
-        margin-bottom: 24px;
-      }
-
-      #leaderboard h2 {
-        font-size: 20px;
-        margin-bottom: 24px;
-      }
-
-      #leaderboard ol {
-        padding-left: 16px;
-      }
-      #leaderboard li {
-        padding: 0px 0 12px 0;
-      }
-    </style>
 
     <script>
       const texts = [
@@ -173,70 +63,57 @@
     </script>
 
     <script>
+      let top10 = [];
       $(function () {
-        const wordsContainer = $("#words-container");
-        const btnStart = $("#btnStart");
+        const $wordsContainer = $("#words-container");
+        const $btnStart = $("#btnStart");
         let currentWordIndex = 0;
-        const text = texts[0].split(" ");
-        const input = $("#input");
+        const text = texts[Math.floor(Math.random() * texts.length)].split(" ");
+        const $input = $("#input");
         let entries = 0;
         let startTime;
         let finishTime;
         let hasFinish = false;
         let hasStart = false;
-        const timeIndicator = $("#time");
-        const wpmIndicator = $("#wpm");
-        const userData = loadUserData();
-        const name = $("#name");
-        const leaderboard = $("#lb");
+        const $timeIndicator = $("#time");
+        const $wpmIndicator = $("#wpm");
+        const $name = $("#name");
+        const $leaderboard = $("#lb");
 
         let duration = 0.5;
 
-        initTime(duration);
+        setTime(duration);
 
         let time;
 
+        top10 = loadUserData().slice(0, 10);
+
+        if (top10.length > 0) {
+          setLeaderboard(top10);
+        }
+
         text.forEach((word) => {
-          wordsContainer.append(
+          $wordsContainer.append(
             $(
-              `<div>${word
+              `<div class='word'>${word
                 .split("")
-                .map((c) => `<span>${c}</span>`)
+                .map((c) => `<span class='char'>${c}</span>`)
                 .join("")}</div>`
             )
           );
         });
 
-        btnStart.on("click", () => {
+        $btnStart.on("click", () => {
           hasStart = true;
           startTime = new Date();
+          time = new Date(startTime.getTime() + 1000 * 60 * duration);
+
+          resetWords();
+          $input.val("");
+
           $("#bottom").addClass("start");
 
-          let j = setInterval(() => {
-            if (!hasFinish) return;
-
-            // store user data
-            const user = {
-              name: name.val(),
-              wpm: calculateWPM(
-                entries,
-                (finishTime.getTime() - startTime.getTime()) / (1000 * 60)
-              ),
-            };
-
-            leaderboard.html(() => {
-              return [...userData, user]
-                .sort((a, b) => b.wpm - a.wpm)
-                .map((a) => $(`<li>${a.name} : ${a.wpm} WPM</li>`));
-            });
-
-            leaderboard.show();
-
-            localStorage.setItem("users", JSON.stringify([...userData, user]));
-            clearInterval(j);
-          }, 250);
-
-          time = new Date(startTime.getTime() + 1000 * 60 * duration);
+          highlightWordCharacter($wordsContainer.children().eq(0), 0);
 
           let i = setInterval(() => {
             if (hasFinish) {
@@ -244,31 +121,29 @@
             }
 
             const remaining = time.getTime() - new Date().getTime();
-            const min = Math.round(remaining / (1000 * 60));
+            const min = remaining / (1000 * 60);
             const sec = Math.round(remaining / 1000);
 
             const wpm = calculateWPM(entries, duration - min);
 
-            wpmIndicator.html(`WPM : ${wpm}`);
+            $wpmIndicator.html(`WPM : ${wpm}`);
 
-            timeIndicator.html(
-              `Time left: ${min > 0 ? `${min} min ` : ""}${sec} secs`
-            );
+            setTime(min);
 
             if (remaining < 0) {
               hasFinish = true;
               finishTime = new Date(startTime.getTime() + duration * 1000 * 60);
-              $("#bottom").removeClass("start");
+              setupFinish();
               clearInterval(i);
             }
           }, 1000);
 
-          input.focus();
+          $input.focus();
         });
 
         let resetVal = false;
 
-        input.on("keydown", (e) => {
+        $input.on("keydown", (e) => {
           if (!hasStart || hasFinish) {
             e.preventDefault();
             e.stopPropagation();
@@ -285,28 +160,29 @@
               value.trim() === currentWord
             );
             if (value.trim() === currentWord) {
-              input.val("");
+              $input.val("");
               resetVal = true;
+
+              $wordsContainer.children().eq(currentWordIndex).addClass("typed");
+
               currentWordIndex++;
               entries += currentWord.length + 1;
+              highlightWordCharacter(
+                $wordsContainer.children().eq(currentWordIndex),
+                0
+              );
 
               if (currentWordIndex === text.length) {
                 finishTime = new Date();
                 hasFinish = true;
-                $("#bottom").removeClass("start");
-                console.log(
-                  calculateWPM(
-                    entries,
-                    (finishTime.getTime() - startTime.getTime()) / (1000 * 60)
-                  )
-                );
+                setupFinish();
               }
               return;
             }
           }
         });
 
-        input.on("keyup", (e) => {
+        $input.on("keyup", (e) => {
           if (!hasStart || hasFinish) {
             e.preventDefault();
             e.stopPropagation();
@@ -314,17 +190,17 @@
           }
 
           if (resetVal) {
-            input.val("");
+            $input.val("");
             resetVal = false;
           }
 
           const currentWord = text[currentWordIndex];
           const value = e.target.value;
-          const wordContainer = wordsContainer.children().eq(currentWordIndex);
+          const wordContainer = $wordsContainer.children().eq(currentWordIndex);
 
-          wordContainer.children().each((i, c) => {
-            $(c).css("text-decoration", "none").css("color", "inherit");
-          });
+          if (e.key !== " " && e.key !== " ") {
+            resetWord(wordContainer);
+          }
 
           let currEntries = 0;
 
@@ -333,15 +209,10 @@
               if (i < value.length) {
                 if (c === value[i]) {
                   currEntries++;
-                  wordContainer
-                    .children()
-                    .eq(i)
-                    .css("text-decoration", "underline");
+                  wordContainer.children().eq(i).addClass("line");
+                  highlightWordCharacter(wordContainer, i + 1);
                 } else {
-                  wordContainer.children().eq(i).css({
-                    color: "red",
-                    "text-decoration": "1px underline red",
-                  });
+                  wordContainer.children().eq(i).addClass("line error");
                   throw "QUIT";
                 }
               }
@@ -355,8 +226,24 @@
           const currWPM = (entries + currEntries) / 5 / min;
         });
 
+        function setupFinish() {
+          $("#bottom").removeClass("start");
+
+          let username = $name.val();
+          const lengthTime = (finishTime - startTime) / (1000 * 60);
+          console.log(lengthTime);
+          let wpm = calculateWPM(entries, lengthTime);
+
+          top10 = [...top10, { name: username, wpm }].toSorted(
+            (a, b) => b.wpm - a.wpm
+          );
+
+          setLeaderboard(top10);
+          localStorage.setItem("users", JSON.stringify(top10));
+        }
+
         function calculateWPM(characterEntries, timeInMinute) {
-          const wpm = characterEntries / 5 / timeInMinute;
+          const wpm = Math.round(characterEntries / 5 / timeInMinute);
           return wpm;
         }
 
@@ -374,7 +261,42 @@
           }
         }
 
-        function initTime(duration) {}
+        function setTime(min) {
+          const sec = Math.round(min * 60);
+
+          $timeIndicator.html(
+            `Time left: ${min >= 1 ? `${Math.round(min)} min ` : ""}${sec} secs`
+          );
+        }
+        function setLeaderboard(lb) {
+          $leaderboard.html(() => {
+            return lb.map((a, i) =>
+              $(`
+            <tr>
+              <td>${i + 1}</td>
+              <td>${a.name}</td>
+              <td>${a.wpm}</td>
+            </tr>`)
+            );
+          });
+        }
+
+        function highlightWordCharacter(word, length) {
+          for (let i = 0; i <= length; i++) {
+            word.children().eq(i).addClass("line");
+          }
+        }
+
+        function resetWords() {
+          $wordsContainer.children().removeClass("typed");
+          $wordsContainer
+            .children()
+            .each((i, e) => $(e).children().removeClass("line error"));
+        }
+
+        function resetWord(wordContainer) {
+          wordContainer.children().removeClass("line error");
+        }
       });
     </script>
   </body>
